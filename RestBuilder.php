@@ -47,7 +47,7 @@ class RestBuilder {
 
         $this->uri = $uri;
     }
-    
+
     /**
      * @param string $header
      * @return RestBuilder
@@ -104,7 +104,7 @@ class RestBuilder {
         $this->uri = $uri;
         return $this;
     }
-    
+
     /**
      * Changes the data in the POST and PUT to JSON and sets the header to JSON
      * @return RestBuilder
@@ -132,7 +132,7 @@ class RestBuilder {
     public function sendRequest()
     {
         $sendData = [];
-        
+
         if (strcmp($this->method, 'POST') == 0 || strcmp($this->method, 'PUT') == 0) {
             $sendData = $this->postData;
         } elseif ($this->method == 'GET') {
