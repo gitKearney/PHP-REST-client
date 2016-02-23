@@ -52,11 +52,11 @@ class RestBuilder {
      * @param string $header
      * @return RestBuilder
      */
-     public function addHeader($header)
-     {
+    public function addHeader($header)
+    {
         $this->header .= $header.PHP_EOL;
         return $this;
-     }
+    }
 
     /**
      * @param array $data
@@ -70,7 +70,7 @@ class RestBuilder {
 
     /**
      * @param $data
-     * @return $this
+     * @return RestBuilder
      */
     public function setGetQueryString($data)
     {
@@ -104,35 +104,53 @@ class RestBuilder {
         $this->uri = $uri;
         return $this;
     }
-
-    public function getLastResult()
+    
+    /**
+     * Changes the data in the POST and PUT to JSON and sets the header to JSON
+     * @return RestBuilder
+     */
+    public function sendAsJson()
     {
-        return $this->result;
+      $this->header .= 'content-type: application/json'.PHP_EOL;
+      $this->data = json_encode($this->data);
+      return $this;
     }
 
-    public function sendRequest()
+    /**
+     * Returns the result from the last HTTP verb
+     * @return array
+     */
+    public function getLastResult()
     {
-      $sendData = [];
-       
-      if (strcmp($this->method, 'POST') == 0 || strcmp($this->method, 'PUT') == 0) {
-         $sendData = $this->postData;
-      } elseif ($this->method == 'GET') {
-         $header = 'Content-Type: text/html; charset=utf-8';
-         $sendData = $this->getData;
-      }
-
-      $opts = [
-         'http' => [
-               'method'  => $this->method,
-               'header'  => $this->header,
-               'content' => $sendData,
-         ],
-      ];
-
-      $context = stream_context_create($opts);
-
-      $this->result = file_get_contents($this->uri, false, $context);
       return $this->result;
     }
 
+    /**
+     * Opens up a connection to the URI using the HTTP verb specified
+     * @return array
+     */
+    public function sendRequest()
+    {
+        $sendData = [];
+        
+        if (strcmp($this->method, 'POST') == 0 || strcmp($this->method, 'PUT') == 0) {
+            $sendData = $this->postData;
+        } elseif ($this->method == 'GET') {
+            $header = 'Content-Type: text/html; charset=utf-8';
+            $sendData = $this->getData;
+        }
+
+        $opts = [
+            'http' => [
+               'method'  => $this->method,
+               'header'  => $this->header,
+               'content' => $sendData,
+            ],
+        ];
+
+        $context = stream_context_create($opts);
+
+        $this->result = file_get_contents($this->uri, false, $context);
+        return $this->result;
+    }
 }
