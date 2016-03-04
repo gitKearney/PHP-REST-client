@@ -158,19 +158,17 @@ class RestBuilder {
     {
         $sendData = [];
 
-        if (! $this->contentTypeSet) {
-            # default to sending data as URL Form Encoded
-            print "setting content type automatically".PHP_EOL;
-            $this->sendAsUrlFormEncoded();
-        }
-
         if (strcmp($this->method, 'POST') == 0 || strcmp($this->method, 'PUT') == 0) {
+            if (! $this->contentTypeSet) {
+                # default to sending data as URL Form Encoded
+                $this->sendAsUrlFormEncoded();
+            }
+
             $sendData = $this->postData;
         } elseif ($this->method == 'GET') {
             $header = 'Content-Type: text/html; charset=utf-8';
             $sendData = $this->getData;
         }
-
 
         $opts = [
             'http' => [
