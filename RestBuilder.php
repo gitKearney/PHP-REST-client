@@ -15,6 +15,7 @@ class RestBuilder {
     protected $allowedHttpVerbs;
     protected $result;
     protected $header;
+    protected $contentTypeSet;
 
     /**
      * @param string $uri the URI to send the request to
@@ -28,6 +29,7 @@ class RestBuilder {
         $this->allowedHttpVerbs = ['GET', 'DELETE', 'POST', 'PUT'];
         $this->method = $method;
         $this->header = '';
+        $this->contentTypeSet = false;
 
         # make the $method all capital letters
         if (! is_null($this->method)) {
@@ -64,7 +66,7 @@ class RestBuilder {
      */
     public function setPostData($data)
     {
-        $this->postData = http_build_query($data);
+        $this->postData = $data;
         return $this;
     }
 
@@ -111,9 +113,32 @@ class RestBuilder {
      */
     public function sendAsJson()
     {
-      $this->header .= 'content-type: application/json'.PHP_EOL;
-      $this->data = json_encode($this->data);
-      return $this;
+        if ($this->contentTypeSet) {
+            return $this;    
+        }
+
+        $this->header .= 'content-type: application/json'.PHP_EOL;
+        $this->postData = json_encode($this->postData);
+        $this->contentTypeSet = true;
+
+        return $this;
+    }
+
+    /**
+     * Sends data as URL Form Encoded
+     * @return RestBuilder
+     */
+    public function sendAsUrlFormEncoded()
+    {
+        if ($this->contentTypeSet) {
+            return $this;
+        }
+
+        $this->header .= 'Content-type: application/x-www-form-urlencoded'.PHP_EOL;
+        $this->contentTypeSet = true;
+        $this->postData = http_build_query($this->postData);
+
+        return $this;
     }
 
     /**
@@ -133,12 +158,19 @@ class RestBuilder {
     {
         $sendData = [];
 
+        if (! $this->contentTypeSet) {
+            # default to sending data as URL Form Encoded
+            print "setting content type automatically".PHP_EOL;
+            $this->sendAsUrlFormEncoded();
+        }
+
         if (strcmp($this->method, 'POST') == 0 || strcmp($this->method, 'PUT') == 0) {
             $sendData = $this->postData;
         } elseif ($this->method == 'GET') {
             $header = 'Content-Type: text/html; charset=utf-8';
             $sendData = $this->getData;
         }
+
 
         $opts = [
             'http' => [
