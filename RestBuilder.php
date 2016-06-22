@@ -1,12 +1,10 @@
 <?php
-
 namespace restbuilder;
 
 /**
- * Sends HTTP DELETE, GET, POST, PUT to a UIR
+ * Sends HTTP DELETE, GET, POST, PUT to a URI. Only 301 and 302's are followed
  * TODO: add PATCH
  */
-
 class RestBuilder {
     protected $uri;
     protected $postData;
@@ -89,11 +87,9 @@ class RestBuilder {
     {
         # make the $method all capital letters
         $this->method = strtoupper($method);
-
         if (! is_null($this->method) && ! in_array($this->method, $this->allowedHttpVerbs)) {
             throw new \Exception('invalid HTTP verb (method) passed in');
         }
-
         return $this;
     }
 
@@ -113,14 +109,7 @@ class RestBuilder {
      */
     public function sendAsJson()
     {
-        if ($this->contentTypeSet) {
-            return $this;    
-        }
-
-        $this->header .= 'content-type: application/json'.PHP_EOL;
-        $this->postData = json_encode($this->postData);
-        $this->contentTypeSet = true;
-
+        $this->contentTypeSet = 'json';
         return $this;
     }
 
@@ -130,14 +119,7 @@ class RestBuilder {
      */
     public function sendAsUrlFormEncoded()
     {
-        if ($this->contentTypeSet) {
-            return $this;
-        }
-
-        $this->header .= 'Content-type: application/x-www-form-urlencoded'.PHP_EOL;
-        $this->contentTypeSet = true;
-        $this->postData = http_build_query($this->postData);
-
+        $this->contentTypeSet = 'urlFormEncoded';
         return $this;
     }
 
@@ -151,35 +133,73 @@ class RestBuilder {
     }
 
     /**
-     * Opens up a connection to the URI using the HTTP verb specified
-     * @return array
+     * returns the POST data. Useful for after a request has been sent to 
+     * see exactly what was sent to the URI
+     * @return string
+     */
+    public function getPostData()
+    {
+        return $this->postData;
+    }
+
+    /**
+     * Opens up a connection to the URI using the HTTP verb specified.
+     * Communicates with the URI using HTTP 1.1.
+     * Only redirects of type 301 or 302 are followed.
+     * HTTP body defaults to type x-www-form-urlencodedd
+     * @return string
      */
     public function sendRequest()
     {
         $sendData = [];
 
         if (strcmp($this->method, 'POST') == 0 || strcmp($this->method, 'PUT') == 0) {
-            if (! $this->contentTypeSet) {
+            if ($this->contentTypeSet === false || $this->contentTypeSet == 'urlFormEncoded') {
                 # default to sending data as URL Form Encoded
-                $this->sendAsUrlFormEncoded();
+                $this->header .= 'Content-type: application/x-www-form-urlencoded'.PHP_EOL;
+                $this->postData = http_build_query($this->postData);
+            } else {
+                # send as JSON
+                $this->header .= 'Content-type: application/json; charset=utf-8'.PHP_EOL;
+                $this->postData = json_encode($this->postData);
+                $this->header .= 'Content-Length: '.strlen($this->postData).PHP_EOL;
             }
 
             $sendData = $this->postData;
+            echo $sendData, PHP_EOL;
         } elseif ($this->method == 'GET') {
             $header = 'Content-Type: text/html; charset=utf-8';
             $sendData = $this->getData;
         }
-
         $opts = [
             'http' => [
                'method'  => $this->method,
                'header'  => $this->header,
+               'follow_location' => 0,
+               'request_fulluri' => true,
+               'protocol_version' => 1.1,
+               'user-agent' => 'Linux/PHP',
                'content' => $sendData,
             ],
         ];
-
         $context = stream_context_create($opts);
+        $this->result = file_get_contents($this->uri, false, $context);
 
+        # search for a 301, 302 in the $http_response_header array
+        if ( stristr($http_response_header[0], 'HTTP/1.1 301') || 
+             stristr($http_response_header[0], 'HTTP/1.1 302')) 
+        {
+            # find the location to redirect to
+            foreach ($http_response_header as $intIndex => $header) {
+                if (strstr($header, 'Location: ')) {
+                    # get the location to redirect to by splitting on the space
+                    $locationArray = explode(' ', $header);
+                    $this->uri = $locationArray[1];
+                }
+            }
+        }
+
+        # attempt the request again
         $this->result = file_get_contents($this->uri, false, $context);
         return $this->result;
     }
