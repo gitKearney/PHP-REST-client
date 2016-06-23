@@ -153,8 +153,12 @@ class RestBuilder {
     {
         $sendData = [];
 
-        if (strcmp($this->method, 'POST') == 0 || strcmp($this->method, 'PUT') == 0) {
-            if ($this->contentTypeSet === false || $this->contentTypeSet == 'urlFormEncoded') {
+        if ( strcmp($this->method, 'POST') == 0 || 
+             strcmp($this->method, 'PUT') == 0) 
+        {
+            if ( $this->contentTypeSet === false || 
+                 $this->contentTypeSet == 'urlFormEncoded') 
+            {
                 # default to sending data as URL Form Encoded
                 $this->header .= 'Content-type: application/x-www-form-urlencoded'.PHP_EOL;
                 $this->postData = http_build_query($this->postData);
@@ -171,6 +175,8 @@ class RestBuilder {
             $header = 'Content-Type: text/html; charset=utf-8';
             $sendData = $this->getData;
         }
+
+        # don't follow redirects, use HTTP protocol version 1.1
         $opts = [
             'http' => [
                'method'  => $this->method,
@@ -197,10 +203,11 @@ class RestBuilder {
                     $this->uri = $locationArray[1];
                 }
             }
+
+            # attempt the request again
+            $this->result = file_get_contents($this->uri, false, $context);
         }
 
-        # attempt the request again
-        $this->result = file_get_contents($this->uri, false, $context);
         return $this->result;
     }
 }
